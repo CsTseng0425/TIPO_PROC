@@ -1,4 +1,9 @@
-ï»¿create or replace PROCEDURE        CHECK_RECEIVE (is_refresh in char,p_rec  out int,p_out_msg   out varchar2) is
+--------------------------------------------------------
+--  DDL for Procedure CHECK_RECEIVE
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "S193"."CHECK_RECEIVE" (is_refresh in char,p_rec  out int,p_out_msg   out varchar2) is
   type receive_no_tab is table of spt21.receive_no%type;
   l_rec        number;
   l_rec2       number;
@@ -12,26 +17,25 @@
   l_pre_no2   char(15);
   v_receive_date char(7);
   l_rec_cnt   number;
- ----------------------------------------
- -- Modify Date: 104/08/07
- -- desc : prepare for receive-getting
- -- Get type_no from spt21
- -- add condition: return_no status
- -- add parameter is_refresh, only when is_refresh is 1 then delete the temp talbe 
- -- 7/7: update error, return_no = '0' , not  0
- -- 104/07/24 -- modify the procedure common_case : delete conditoin to judge national priority 
- -- 104/08/07 -- change conditon of "the same project getting all " 
---               add conditon  doc_complete = '1'       
- -----------------------------------------
+/* ----------------------------------------
+ -- Modify Date: 
+ 105/01/26
+Desc; 1.	±Nµo©ú·s®×¡B·s«¬·s®×¡B³]­p·s®×¡B¤Î­l¥Í³]­p¦X¨Ö¬°1­ÓÃş§O¡u¤@¯ë·s®×¡v¡C
+      2.	¤À³Î«áÄò¡B¤Î§ï½Ğ«áÄòªº±ø¥ó§ï¬°¡A¸Ó«áÄò¤å¤§®×¸¹´¿¦¬¹L¤À³Î/§ï½Ğ·s®×®×¥Ñ¡A¸Ó®×¸¹µL¦A¼f¥Ó½Ğ¤é«h¸Ó¤å¬°¤À³Î/§ï½Ğ«áÄò¤å¡F
+          ¸Ó®×¸¹¦³¦A¼f¥Ó½Ğ¤é¦p¦A¼f¥Ó½Ğ¤é»P¸Ó®×­º¦¸¤½¤å¦¬¤å¤é©Î¶lÂW¤é´Á¬Û¦P¡A«h¬°¤À³Î/§ï½Ğ«áÄò¤å¡F
+          ¸Ó®×¸¹¦³¦A¼f¥Ó½Ğ¤é¦p¦A¼f¥Ó½Ğ¤é»P¸Ó®×­º¦¸¤½¤å¦¬¤å¤é©Î¶lÂW¤é´Á¤£¦P¡A«h¬°¤@¯ë«áÄò¤å¡C
+105/02/18:  merge 10000,10002,10003,10007  into one item 
+105/03/03: ¸Ó®×­º¦¸¤½¤å¦¬¤å¤é ¬°spt31.first_day
+ -----------------------------------------*/
 
   procedure related_case1
-  --  ä¸»å¼µåœ‹å…§å„ªå…ˆæ¬Šçš„æ–°ç”³è«‹æ¡ˆä¹‹å…¬æ–‡åˆ—å…¥è¤‡é›œæ¡ˆä»¶
-  --  éœ€åˆ¤æ–·ä»¶æ•¸
+  --  ¥D±i°ê¤ºÀu¥ıÅvªº·s¥Ó½Ğ®×¤§¤½¤å¦C¤J½ÆÂø®×¥ó
+  --  »İ§PÂ_¥ó¼Æ
    is
   --  v_collect receive_no_tab;
   begin
     insert into tmp_get_receive
-    select receive_no , receive_no ,'related_case1_1','MISC_AMEND','ä¸»å¼µåœ‹å…§å„ªå…ˆæ¬Šçš„æ–°ç”³è«‹æ¡ˆä¹‹å…¬æ–‡','0'
+    select receive_no , receive_no ,'related_case1_1','MISC_AMEND','¥D±i°ê¤ºÀu¥ıÅvªº·s¥Ó½Ğ®×¤§¤½¤å','0',sysdate
       from receive
      where exists (select appl_no
               from spt32
@@ -40,13 +44,13 @@
        and substr(receive.receive_no, 4, 1) = '2'
        and step_code = '0'
        and doc_complete = '1'
-       and return_no not in ('4','A','B','C','D')
+       and return_no not in ('4','A','B','C','D') --°h¿ì¤½¤å
        and not exists (select 1 from tmp_get_receive where receive_no = receive.receive_no and is_get = '0')
        ;
        l_rec_cnt := l_rec_cnt +  SQL%RowCount;
-      -- æ–°æ¡ˆçºŒé ˜å¾ŒçºŒæ–‡
+      -- ·s®×Äò»â«áÄò¤å
       insert into tmp_get_receive
-      select receive.receive_no , n.receive_no ,'related_case1_2','MISC_AMEND','ä¸»å¼µåœ‹å…§å„ªå…ˆæ¬Šçš„æ–°ç”³è«‹æ¡ˆä¹‹å¾ŒçºŒæ–‡','0'
+      select receive.receive_no , n.receive_no ,'related_case1_2','MISC_AMEND','¥D±i°ê¤ºÀu¥ıÅvªº·s¥Ó½Ğ®×¤§«áÄò¤å','0',sysdate
       from receive
       join  (select appl_no , receive_no
               from receive
@@ -66,20 +70,20 @@
         and return_no not in ('4','A','B','C','D')
         and not exists (select 1 from tmp_get_receive where receive_no = receive.receive_no and is_get = '0')
       ;
-   
-       dbms_output.put_line(' ä¸»å¼µåœ‹å…§å„ªå…ˆæ¬Šçš„æ–°ç”³è«‹æ¡ˆä¹‹å…¬æ–‡åˆ—å…¥è¤‡é›œæ¡ˆä»¶é ˜å– ' || l_rec_cnt);
+   l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+       dbms_output.put_line(' ¥D±i°ê¤ºÀu¥ıÅvªº·s¥Ó½Ğ®×¤§¤½¤å¦C¤J½ÆÂø®×¥ó»â¨ú ' || l_rec_cnt);
       commit;
-    g_reason := 'ä¸»å¼µåœ‹å…§å„ªå…ˆæ¬Šçš„æ–°ç”³è«‹æ¡ˆä¹‹å…¬æ–‡åˆ—å…¥è¤‡é›œæ¡ˆä»¶é ˜å–';
+    g_reason := '¥D±i°ê¤ºÀu¥ıÅvªº·s¥Ó½Ğ®×¤§¤½¤å¦C¤J½ÆÂø®×¥ó»â¨ú';
   
   end related_case1;
 
   procedure related_case2
-  --  å¤–åŒ…è‡ªå‹•é€€æ–‡,å’Œå¾ŒçºŒæ–‡ä¸€èµ·é ˜
-  --  éœ€æ•´åŒ…å…¨é ˜,åˆ¤æ–·æ¢ä»¶
+  --  ¥~¥]¦Û°Ê°h¤å,©M«áÄò¤å¤@°_»â
+  --  »İ¾ã¥]¥ş»â,§PÂ_±ø¥ó
    is
    -- v_collect receive_no_tab;
   begin
-   --dbms_output.put_line('update å¤–åŒ…è‡ªå‹•é€€æ–‡');
+   --dbms_output.put_line('update ¥~¥]¦Û°Ê°h¤å');
     update receive
        set return_no = '1', step_code = '0', processor_no = '70012'
      where receive_no in
@@ -134,7 +138,7 @@
                       );                                         
     commit;                                         
     insert into tmp_get_receive
-    select receive_no , pre_no ,'related_case2','MISC_AMEND','å¤–åŒ…è‡ªå‹•é€€æ–‡,å’Œå¾ŒçºŒæ–‡ä¸€èµ·é ˜','0'
+    select receive_no , pre_no ,'related_case2','MISC_AMEND','¥~¥]¦Û°Ê°h¤å,©M«áÄò¤å¤@°_»â','0',sysdate
       from (Select a.receive_no, a.receive_no pre_no
               from receive a
              where a.return_no = '1'
@@ -154,25 +158,26 @@
                and b.step_code = '0'
                and b.doc_complete = '1'
                )
+        where  not exists (select 1 from tmp_get_receive where receive_no = tmp_get_receive.receive_no and is_get = '0')
      ;
      
-    
-      dbms_output.put_line(' å¤–åŒ…è‡ªå‹•é€€æ–‡,å’Œå¾ŒçºŒæ–‡ä¸€èµ·é ˜ ' || l_rec_cnt);
+    l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+      dbms_output.put_line(' ¥~¥]¦Û°Ê°h¤å,©M«áÄò¤å¤@°_»â ' || l_rec_cnt);
     commit;
-    g_reason := 'å¤–åŒ…è‡ªå‹•é€€æ–‡,å’Œå¾ŒçºŒæ–‡ä¸€èµ·é ˜';
+    g_reason := '¥~¥]¦Û°Ê°h¤å,©M«áÄò¤å¤@°_»â';
 
   end related_case2;
 
   procedure related_case3
-  --  é€€æ–‡é‡æ–°é ˜è¾¦ 
-    -- 2:æŸ¥é©—äººå“¡é€€è¾¦ 3:ä¸»ç®¡é€€è¾¦
-    -- åˆ¤æ–·æ¢æ•¸
-    -- 9/4 æ¸¬è©¦æœƒè­°,å–æ¶ˆ 3:ä¸»ç®¡é€€è¾¦
+  --  °h¤å­«·s»â¿ì 
+    -- 2:¬dÅç¤H­û°h¿ì 3:¥DºŞ°h¿ì
+    -- §PÂ_±ø¼Æ
+    -- 9/4 ´ú¸Õ·|Ä³,¨ú®ø 3:¥DºŞ°h¿ì
    is
   --  v_collect receive_no_tab;
   begin
      insert into tmp_get_receive
-    select receive_no , pre_no ,'related_case3_1','MISC_AMEND','é€€æ–‡-å…¨æ¡ˆé‡æ–°é ˜è¾¦','0'
+     select receive_no , pre_no ,'related_case3_1','MISC_AMEND','°h¤å-¥ş®×­«·s»â¿ì','0',sysdate
          from (Select min(a.receive_no) receive_no, min(a.receive_no) pre_no
               from receive a
              where a.return_no in ('2')
@@ -188,7 +193,7 @@
                      where a.return_no in ('2')
                        And a.step_code = '0'
                        and a.doc_complete = '1'
-                        and  not exists (select 1 from tmp_get_receive where receive_no = a.receive_no and is_get = '0')
+                       and  not exists (select 1 from tmp_get_receive where receive_no = a.receive_no )
                        group by appl_no
                                     ) c
                   on b.appl_no = c.appl_no and b.receive_no != c.receive_no
@@ -196,27 +201,33 @@
                and b.step_code = '0'
                and b.doc_complete = '1'
                )
-         
+          where not exists (select 1 from tmp_get_receive where receive_no = tmp_get_receive.receive_no and is_get = '0')
      ;
         l_rec_cnt := l_rec_cnt +  SQL%RowCount;
 
      
-         dbms_output.put_line(' é€€æ–‡é ˜è¾¦ ' || l_rec_cnt);
+         dbms_output.put_line(' °h¤å»â¿ì ' || l_rec_cnt);
        commit;
-    g_reason := 'é€€æ–‡é ˜è¾¦';
+    g_reason := '°h¤å»â¿ì';
 
   end related_case3;
 
   procedure related_case4
-  --    æ”¹è«‹å¾ŒçºŒæ–‡
-  -- æ–°æ¡ˆ+æ”¹è«‹,æ•´åŒ…é ˜å–, ä¸åˆ¤æ–·ä»¶æ•¸
-  -- å¾ŒçºŒæ”¹è«‹, å¾ŒçºŒæ”¹è«‹,ä¸€èˆ¬: ä¸åˆ¤æ–·ä»¶æ•¸
+  /*
+¤½¤åA©M¤½¤åB¬°¦P®×¸¹
+¤½¤åA¬O·s®×(²Ä4½X=2)¥B¨ä®×¥Ñ¬°§ï½Ğµo©ú±M§Q(11000),§ï½Ğ·s«¬±M§Q(11002),§ï½Ğ³]­p±M§Q(11003),§ï½Ğ­l¥Í³]­p±M§Q(11007),§ï½Ğ¿W¥ß±M§Q(11010)¡C
+¤½¤åB¬°«áÄò¤å(¤å¸¹²Ä4½X=3)
+(a)¸Ó®×¸¹µL¦A¼f¥Ó½Ğ¤é(spt31.RE_APPL_DATE)¡A«h¤½¤åB¬°§ï½Ğ«áÄò¤å¡C
+(b) ¸Ó®×¸¹¦³¦A¼f¥Ó½Ğ¤é,¦p¦A¼f¥Ó½Ğ¤é»P¸Ó®×­º¦¸¤½¤å¦¬¤å¤é(spt31.FIRST_DAY)©Î¶lÂW¤é´Á(spt21.POSTMARK_DATE)¬Û¦P¡A«h¤½¤åB¬°§ï½Ğ«áÄò¤å¡C
+(c) ¸Ó®×¸¹¦³¦A¼f¥Ó½Ğ¤é¦p¦A¼f¥Ó½Ğ¤é»P¸Ó®×­º¦¸¤½¤å¦¬¤å¤é©Î¶lÂW¤é´Á¤£¦P¡A«h¤½¤åB¬°¤@¯ë«áÄò¤å
+
+  */
    is
   --  v_collect receive_no_tab;
   begin
-    --- æœ‰æ”¹è«‹æ–°ç”³è«‹çš„æ–‡,çµ±ç”±å…·æ”¹è«‹æ–°ç”³è«‹æ¬Šé™çš„äººé ˜å–æ–°ç”³è«‹å’Œå¾ŒçºŒæ–‡
+    --- ¦³§ï½Ğ·s¥Ó½Ğªº¤å,²Î¥Ñ¨ã§ï½Ğ·s¥Ó½ĞÅv­­ªº¤H»â¨ú·s¥Ó½Ğ©M«áÄò¤å
     insert into tmp_get_receive
-    select receive_no  , pre_no ,'related_case4_1','CONVERTING','æ”¹è«‹æ–°ç”³è«‹æ¡ˆ+æ”¹è«‹å¾ŒçºŒæ–‡','0'
+    select receive_no  , pre_no ,'related_case4_1','CONVERTING','§ï½Ğ·s¥Ó½Ğ®×+§ï½Ğ«áÄò¤å','0',sysdate
       from (select a.receive_no ,a.receive_no  pre_no
               from receive a join spt21 s21 on a.receive_no = s21.receive_no
              where a.step_code = '0'
@@ -233,7 +244,7 @@
                             and step_code = '0'
                             and doc_complete = '1'
                             and return_no not in ('4','A','B','C','D')
-            union all  -- çºŒé ˜å¾ŒçºŒæ–‡
+            union all  -- Äò»â«áÄò¤å
             select a.receive_no , c.receive_no pre_no
               from receive a join
                (select b.appl_no, b.receive_no
@@ -258,63 +269,74 @@
                and a.doc_complete = '1'
                and return_no not in ('4','A','B','C','D')
                and substr(a.receive_no, 4, 1) = '3'
-             );
-          
-             dbms_output.put_line(' æ”¹è«‹æ–°ç”³è«‹æ¡ˆ+æ”¹è«‹å¾ŒçºŒæ–‡ ' || l_rec_cnt);
+             )
+             where not exists (select 1 from tmp_get_receive where receive_no = tmp_get_receive.receive_no and is_get = '0')
+             ;
+          l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+             dbms_output.put_line(' §ï½Ğ·s¥Ó½Ğ®×+§ï½Ğ«áÄò¤å ' || l_rec_cnt);
         commit;
-    g_reason := 'æ”¹è«‹æ–°ç”³è«‹æ¡ˆ+æ”¹è«‹å¾ŒçºŒæ–‡';
+    g_reason := '§ï½Ğ·s¥Ó½Ğ®×+§ï½Ğ«áÄò¤å';
    
    --------------------
-   -- 'æ”¹è«‹å¾ŒçºŒæ–‡'
+   -- '§ï½Ğ«áÄò¤å'
    -------------------
        
     insert into tmp_get_receive
      select receive_no  ,( select min(receive_no) from receive where appl_no = a.appl_no and step_code='0' and doc_complete = '1' group by Receive.Appl_No )
           ,'related_case4_2',
-    ( select   case when type_no  in ('13003', '21100', '24100') then 'MISC_AMEND'
-          else 'CONVERTING_AMEND'         end 
-        from spt21 
-        where receive_no = ( select min(receive_no) from receive where appl_no = a.appl_no and step_code='0' and doc_complete = '1' group by Receive.Appl_No )
-        and appl_no = a.appl_no
+    ( select   case when spt31.RE_APPL_DATE is null  then 'CONVERTING_AMEND' 
+                    when spt31.RE_APPL_DATE is not null and ( spt31.RE_APPL_DATE  =  spt21.POSTMARK_DATE or spt31.RE_APPL_DATE   = spt31.FIRST_DAY) then 'CONVERTING_AMEND'    
+                    when spt31.RE_APPL_DATE is not null and ( spt31.RE_APPL_DATE  !=  spt21.POSTMARK_DATE  or  spt31.RE_APPL_DATE != spt31.FIRST_DAY) then 'MISC_AMEND'
+               else 'CONVERTING_AMEND'         end 
+       from spt31 join spt21 on spt31.appl_no = spt21.appl_no
+        where spt31.appl_no = a.appl_no
+        and substr(spt21.receive_no,4,1) = '2' -- a.receive_no
+        and spt21.type_no in ('11000', '11002', '11003', '11007', '11010')
       )
-      ,  ( select   case when spt21.type_no  in ('13003', '21100', '24100') then 'æ”¹è«‹å¾ŒçºŒæ–‡-ä¸€èˆ¬'
-          else 'æ”¹è«‹å¾ŒçºŒæ–‡'         end 
-        from receive join spt21 on receive.receive_no = spt21.receive_no
-        where receive.receive_no = ( select min(receive_no) from receive where appl_no = a.appl_no and step_code='0' and doc_complete = '1' group by Receive.Appl_No )
-        and receive.appl_no = a.appl_no
+      ,  ( select   case when spt31.RE_APPL_DATE is null  then '§ï½Ğ«áÄò¤å'     
+                         when spt31.RE_APPL_DATE is not null and ( spt31.RE_APPL_DATE  =  spt21.POSTMARK_DATE or spt31.RE_APPL_DATE   = spt31.FIRST_DAY) then '§ï½Ğ«áÄò¤å'                         
+                         when spt31.RE_APPL_DATE is not null and  ( spt31.RE_APPL_DATE  !=  spt21.POSTMARK_DATE  or  spt31.RE_APPL_DATE != spt31.FIRST_DAY)  then '§ï½Ğ«áÄò¤å-¤@¯ë'                         
+                    else '§ï½Ğ«áÄò¤å'         
+                    end 
+        from spt31 join spt21 on spt31.appl_no = spt21.appl_no
+        where spt31.appl_no = a.appl_no
+        and substr(spt21.receive_no,4,1) = '2' -- a.receive_no
+        and spt21.type_no in ('11000', '11002', '11003', '11007', '11010')
       )
-      ,'0'
+      ,'0',sysdate
       from receive a 
       where a.step_code = '0'
        and a.doc_complete = '1'
        and return_no not in ('4','A','B','C','D')
        and substr(a.receive_no, 4, 1) = '3'
-       and exists (select 1
+       and exists (select ''
               from  spt21 s21 left join receive b on b.receive_no = s21.receive_no
              where s21.appl_no = a.appl_no
-               and s21.type_no in
-                   ('11000', '11002', '11003', '11007', '11010')
-               and ( step_code = '8' or  step_code is null  ))
+               and s21.receive_no < a.receive_no
+               and s21.type_no in ('11000', '11002', '11003', '11007', '11010')
+               and (( s21.process_result is not null and online_flg = 'N') or (s21.ONLINE_FLG='Y' and b.step_code ='8') )
+              )
+         and  not exists (select 1 from tmp_get_receive where receive_no = a.receive_no )
              ;
- 
-      g_reason := 'æ”¹è«‹å¾ŒçºŒæ–‡';
-   dbms_output.put_line(' æ”¹è«‹å¾ŒçºŒæ–‡ ' || l_rec_cnt);
+ l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+      g_reason := '§ï½Ğ«áÄò¤å';
+   dbms_output.put_line(' §ï½Ğ«áÄò¤å ' || l_rec_cnt);
           
      commit;
-      g_reason := 'æ”¹è«‹æ–°ç”³è«‹æ¡ˆä¸€èˆ¬å¾ŒçºŒæ–‡';
+      g_reason := '§ï½Ğ·s¥Ó½Ğ®×¤@¯ë«áÄò¤å';
     
   end related_case4;
 
   procedure related_case5
-  --    åˆ†å‰²å¾ŒçºŒæ–‡
-  -- ä¸åˆ¤æ–·ä»¶æ•¸
+  --    ¤À³Î«áÄò¤å
+  -- ¤£§PÂ_¥ó¼Æ
    is
     v_collect receive_no_tab;
   begin
   
-    --- æœ‰åˆ†å‰²æ–°ç”³è«‹çš„æ–‡,çµ±ç”±å…·åˆ†å‰²æ–°ç”³è«‹æ¬Šé™çš„äººé ˜å–æ–°ç”³è«‹å’Œå¾ŒçºŒæ–‡
+    --- ¦³¤À³Î·s¥Ó½Ğªº¤å,²Î¥Ñ¨ã¤À³Î·s¥Ó½ĞÅv­­ªº¤H»â¨ú·s¥Ó½Ğ©M«áÄò¤å
     insert into tmp_get_receive
-    select receive_no  , pre_no ,'related_case5_1','DIVIDING','åˆ†å‰²æ–°ç”³è«‹ + åˆ†å‰²å¾ŒçºŒæ–‡','0'
+    select receive_no  , pre_no ,'related_case5_1','DIVIDING','¤À³Î·s¥Ó½Ğ + ¤À³Î«áÄò¤å','0',sysdate
       from (select a.receive_no ,a.receive_no pre_no
               from receive a join spt21 s21 on a.receive_no = s21.receive_no
              where a.step_code = '0'
@@ -346,59 +368,74 @@
                and a.doc_complete = '1'
                and return_no not in ('4','A','B','C','D')
                and substr(a.receive_no, 4, 1) = '3'
-          );
-    g_reason := 'åˆ†å‰²æ–°ç”³è«‹ + åˆ†å‰²å¾ŒçºŒæ–‡';
-   
-      dbms_output.put_line(' åˆ†å‰²æ–°ç”³è«‹ + åˆ†å‰²å¾ŒçºŒæ–‡ ' || l_rec_cnt);
+          )
+          where not exists (select 1 from tmp_get_receive where receive_no = tmp_get_receive.receive_no and is_get = '0')
+          ;
+          
+    g_reason := '¤À³Î·s¥Ó½Ğ + ¤À³Î«áÄò¤å';
+   l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+      dbms_output.put_line(' ¤À³Î·s¥Ó½Ğ + ¤À³Î«áÄò¤å ' || l_rec_cnt);
     commit;
   
-    ---åˆ†å‰²å¾ŒçºŒæ–‡
+    ---¤À³Î«áÄò¤å
     insert into tmp_get_receive
-    select a.receive_no   , ( select min(receive_no) from receive where appl_no = a.appl_no and step_code='0' and doc_complete = '1' group by Receive.Appl_No ) 
+    select a.receive_no   ,    ( select min(receive_no) from receive where appl_no = a.appl_no and step_code='0' and doc_complete = '1' group by Receive.Appl_No ) 
             ,'related_case5_2',
-          ( select   case when s.type_no  in ('13003', '21100', '24100') then 'MISC_AMEND'
-          else 'DIVIDING_AMEND'         end 
-        from receive join spt21 s on receive.receive_no = s.receive_no
-        where receive.receive_no = ( select min(receive_no) from receive where appl_no = a.appl_no and step_code='0' and doc_complete = '1' group by Receive.Appl_No )
-        and receive.appl_no = a.appl_no
+         ( select  case  when s31.RE_APPL_DATE is null  then 'DIVIDING_AMEND'     
+                         when s31.RE_APPL_DATE is not null and (s31.RE_APPL_DATE = s21.POSTMARK_DATE or s31.RE_APPL_DATE  = s31.FIRST_DAY) then 'DIVIDING_AMEND'     
+                         when s31.RE_APPL_DATE is not null and  (s31.RE_APPL_DATE != s21.POSTMARK_DATE or s31.RE_APPL_DATE  != s31.FIRST_DAY) then 'MISC_AMEND'
+                    else 'DIVIDING_AMEND'         
+                    end 
+        from spt21 s21 
+        join spt31 s31 on s21.appl_no = s31.appl_no
+         where s21.appl_no = a.appl_no
+        and substr(s21.receive_no,4,1) = '2'
+        and s21.type_no in ('12000', '11092')
       )
-      ,  ( select   case when s.type_no  in ('13003', '21100', '24100') then 'åˆ†å‰²å¾ŒçºŒæ–‡-ä¸€èˆ¬'
-          else 'åˆ†å‰²å¾ŒçºŒæ–‡'         end 
-        from receive join spt21 s on receive.receive_no = s.receive_no
-        where receive.receive_no = ( select min(receive_no) from receive where appl_no = a.appl_no and step_code='0' and doc_complete = '1' group by Receive.Appl_No )
-        and receive.appl_no = a.appl_no
+      ,  ( select  case when s31.RE_APPL_DATE is null  then '¤À³Î«áÄò¤å'     
+                         when s31.RE_APPL_DATE is not null and  (s31.RE_APPL_DATE = s21.POSTMARK_DATE or s31.RE_APPL_DATE  = s31.FIRST_DAY) then '¤À³Î«áÄò¤å'     
+                         when s31.RE_APPL_DATE is not null and  (s31.RE_APPL_DATE != s21.POSTMARK_DATE or s31.RE_APPL_DATE  != s31.FIRST_DAY) then '¤À³Î«áÄò¤å-¤@¯ë'
+                    else '¤À³Î«áÄò¤å'         
+                    end 
+        from spt21 s21 
+        join spt31 s31 on s21.appl_no = s31.appl_no
+        where s21.appl_no = a.appl_no
+        and substr(s21.receive_no,4,1) = '2'
+        and s21.type_no in ('12000', '11092')
       )
-      ,'0'
+      ,'0',sysdate
      from receive a 
      join spt21 s21 on a.receive_no = s21.receive_no
      where a.step_code = '0'
        and a.doc_complete = '1'
        and return_no not in ('4','A','B','C','D')
        and substr(a.receive_no, 4, 1) = '3'
-       and exists (select 1
-              from spt21 s21 left join receive b on b.receive_no = s21.receive_no
-             where s21.appl_no = a.appl_no
-               and ( b.step_code = '8' or b.step_code is null)
-               and s21.type_no in ('12000', '11092'))
+       and exists (select ''
+              from spt21 s21  left join receive b on b.receive_no = s21.receive_no
+              where s21.appl_no = a.appl_no
+              and s21.receive_no < a.receive_no
+              and s21.type_no in ('12000', '11092')
+              and (( s21.process_result is not null and online_flg = 'N') or (s21.ONLINE_FLG='Y' and b.step_code ='8') )
+              )
+       and  not exists (select 1 from tmp_get_receive where receive_no = a.receive_no )
        ;
      
-    g_reason := 'åˆ†å‰²å¾ŒçºŒæ–‡';
-   
-     dbms_output.put_line(' åˆ†å‰²å¾ŒçºŒæ–‡ ' || l_rec_cnt);
+    g_reason := '¤À³Î«áÄò¤å';
+   l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+     dbms_output.put_line(' ¤À³Î«áÄò¤å ' || l_rec_cnt);
     commit;
 
   end related_case5;
 
   procedure related_case6
-  --  çºŒé ˜å¾ŒçºŒæ–‡ 
-  -- ä¸åˆ¤æ–·ä»¶æ•¸
+  --  Äò»â«áÄò¤å 
+  -- ¤£§PÂ_¥ó¼Æ
    is
     v_collect receive_no_tab;
   begin
-   
               
      insert into tmp_get_receive
-      select a.receive_no , a.receive_no ,'related_case6',c.processor_no,'çºŒé ˜å¾ŒçºŒæ–‡','0'
+      select distinct a.receive_no , a.receive_no ,'related_case6',c.processor_no,'Äò»â«áÄò¤å','0',sysdate
       from receive a 
       join ( select appl_no, processor_no from receive b
        where  b.step_code > '0' and b.step_code < '8'
@@ -408,23 +445,24 @@
        and a.doc_complete = '1'
        and return_no not in ('4','A','B','C','D')
        and substr(a.receive_no, 4, 1) = '3'
+       and  not exists (select 1 from tmp_get_receive where receive_no = a.receive_no )
      ;
-   
-      dbms_output.put_line(' çºŒé ˜å¾ŒçºŒæ–‡ ' || l_rec_cnt);
+   l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+      dbms_output.put_line(' Äò»â«áÄò¤å ' || l_rec_cnt);
     commit;
-    g_reason := 'çºŒé ˜å¾ŒçºŒæ–‡';
+    g_reason := 'Äò»â«áÄò¤å';
    
   end related_case6;
 
   procedure same_case1
-  --  æ–°æ¡ˆæ‰¿è¾¦äººå„ªå…ˆå…¨é ˜ 
-  -- ä¸åˆ¤æ–·ä»¶æ•¸
+  --  ·s®×©Ó¿ì¤HÀu¥ı¥ş»â 
+  -- ¤£§PÂ_¥ó¼Æ
    is
     v_collect receive_no_tab;
   begin
  
      insert into tmp_get_receive
-      select a.receive_no , a.receive_no ,'same_case1',b.processor_no,'æ–°æ¡ˆæ‰¿è¾¦äººå„ªå…ˆå…¨é ˜','0'
+      select a.receive_no , a.receive_no ,'same_case1',b.processor_no,'·s®×©Ó¿ì¤HÀu¥ı¥ş»â','0',sysdate
       from receive a
       join receive b
         on a.appl_no = b.appl_no
@@ -436,27 +474,27 @@
        and a.receive_no > b.receive_no
        and not exists (select 1 from tmp_get_receive where receive_no = a.receive_no and is_get='0')
     ;
-   
-      dbms_output.put_line(' æ–°æ¡ˆæ‰¿è¾¦äººå„ªå…ˆå…¨é ˜ ' || l_rec_cnt);
+   l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+      dbms_output.put_line(' ·s®×©Ó¿ì¤HÀu¥ı¥ş»â ' || l_rec_cnt);
     commit;
-    g_reason := 'æ–°æ¡ˆæ‰¿è¾¦äººå„ªå…ˆå…¨é ˜';
+    g_reason := '·s®×©Ó¿ì¤HÀu¥ı¥ş»â';
    
   end same_case1;
 
   procedure same_case2 is
    begin
-   -- æ•´åŒ…é ˜
-    ---åŒæ¡ˆå…¨é ˜
+   -- ¾ã¥]»â
+    ---¦P®×¥ş»â
   
     insert into tmp_get_receive
-     select v.receive_no, v.receive_no,'same_case2',v.skill,'åŒæ¡ˆå…¨é ˜ ','0'
+     select v.receive_no, v.receive_no,'same_case2',v.skill,'¦P®×¥ş»â ','0',sysdate
                       from VW_PULLING v
                      where substr(v.receive_no, 4, 1) = '2'
                        and v.return_no  not in ('4','A','B','C','D')
                        and not exists (select 1 from tmp_get_receive where receive_no = v.receive_no)     
                        and exists (select 1 from receive where receive.appl_no = v.appl_no and receive_no > v.receive_no)
            union all 
-                       select v.receive_no, n.receive_no, 'same_case2',n.skill,'åŒæ¡ˆå…¨é ˜ ','0'
+                       select v.receive_no, n.receive_no, 'same_case2',n.skill,'¦P®×¥ş»â ','0',sysdate
                       from VW_PULLING v 
                       join (
                       select v.appl_no, v.receive_no, v.skill
@@ -469,30 +507,30 @@
                        and v.return_no  not in ('4','A','B','C','D')
                       and not exists (select 1 from tmp_get_receive where receive_no = v.receive_no and is_get = '0')
             ;
-    
-          dbms_output.put_line(' åŒæ¡ˆå…¨é ˜ ' || l_rec_cnt);
+    l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+          dbms_output.put_line(' ¦P®×¥ş»â ' || l_rec_cnt);
        commit;
    
-    g_reason := 'åŒæ¡ˆå…¨é ˜';
+    g_reason := '¦P®×¥ş»â';
 
   end same_case2;
   
   procedure common_case
-  --é ˜å–ä¸€èˆ¬åˆ†é…æ–‡è™Ÿ
-  -- åˆ¤æ–·ä»¶æ•¸
+  --»â¨ú¤@¯ë¤À°t¤å¸¹
+  -- §PÂ_¥ó¼Æ
    is
   begin
     insert into tmp_get_receive
-    select receive_no , receive_no ,'common_case',v.skill,'é ˜å–ä¸€èˆ¬åˆ†é…æ–‡è™Ÿ ','0'
+    select receive_no , receive_no ,'common_case',v.skill,'»â¨ú¤@¯ë¤À°t¤å¸¹ ','0',sysdate
       from VW_PULLING v
      where return_no <= '3'
       and not exists (select 1 from tmp_get_receive where receive_no = v.receive_no and is_get = '0')
         ;
-       
-        dbms_output.put_line(' é ˜å–ä¸€èˆ¬åˆ†é…æ–‡è™Ÿ ' || l_rec_cnt);
+       l_rec_cnt := l_rec_cnt +  SQL%RowCount;
+        dbms_output.put_line(' »â¨ú¤@¯ë¤À°t¤å¸¹ ' || l_rec_cnt);
           commit;
    
-    g_reason := 'é ˜å–ä¸€èˆ¬åˆ†é…æ–‡è™Ÿ';
+    g_reason := '»â¨ú¤@¯ë¤À°t¤å¸¹';
 
   end common_case;
 
@@ -508,27 +546,22 @@ begin
    delete  tmp_get_receive;
 end if ;
    
-    -- çºŒé ˜å¾ŒçºŒæ–‡,ä¸ç”¨è¢«é ˜å–ä»¶æ•¸é™åˆ¶
+    -- Äò»â«áÄò¤å,¤£¥Î³Q»â¨ú¥ó¼Æ­­¨î
      related_case6;
-   --æ–°æ¡ˆæ‰¿è¾¦äººå„ªå…ˆå…¨é ˜ ,ä¸ç”¨è¢«é ˜å–ä»¶æ•¸é™åˆ¶
+   --·s®×©Ó¿ì¤HÀu¥ı¥ş»â ,¤£¥Î³Q»â¨ú¥ó¼Æ­­¨î
     same_case1;
-    --   g_reason := 'ä¸»å¼µåœ‹å…§å„ªå…ˆæ¬Šçš„æ–°ç”³è«‹æ¡ˆ';
+    --   g_reason := '¥D±i°ê¤ºÀu¥ıÅvªº·s¥Ó½Ğ®×';
     related_case1;
  
     related_case2;
-    -- é€€æ–‡é‡é ˜è¾¦
+    -- °h¤å­«»â¿ì
    related_case3;
  
-
-    related_case4;
+   related_case4;
  
-    related_case5;
+   related_case5;
 
- 
-
-
-
- --  åŒæ¡ˆå…¨é ˜ 
+ --  ¦P®×¥ş»â 
   same_case2;
 
   common_case;
@@ -543,3 +576,5 @@ EXCEPTION
     dbms_output.put_line('Error Code:' || ecode || '; Error Message:' ||
                          p_out_msg);
 END CHECK_RECEIVE;
+
+/

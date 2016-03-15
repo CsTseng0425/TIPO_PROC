@@ -1,38 +1,45 @@
-ï»¿create or replace PROCEDURE        GET_RECEIVE (p_object_id in varchar2,
+--------------------------------------------------------
+--  DDL for Procedure GET_RECEIVE
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "S193"."GET_RECEIVE" (p_object_id in varchar2,
                                         p_quota     in number,
                                         p_out_msg   out varchar2) is
----------------------------------
+/*---------------------------------
 -- Get receive
--- Modify Date : 104/07/16
--- Get type_no from spt21
--- 5/20 record transfer history
--- 6/2  change receive_trans_log schema
--- 6/25 update process_date
--- 104/07/16 change the rule of getting number ,reference parameter
----------------------------------
+ModiyDate : 105/02/15
+Desc: 	©Ó¿ì¤H¦P®É¾Ö¦³¤@¯ë·s®×¤Î¨ä¥LºØÃş¤½¤åªº©Ó¿ìÅv­­®É¡A¦b»â¿ì®É©Ò»â¤½¤å¤@¥bªº¼Æ¶q¥Ñ¤@¯ë·s®×¤¤±¼¸¨¡]¤p¼ÆÂI¶i¦ì¡^¡A
+¦pªG¤@¯ë·s®×¤£¨¬«h±q«áÄò¤å¤¤¸É¨¬¡A¨ä¾l»â¿ìÀË®Ö±ø¥ó¤£ÅÜ¡C
+¨Ò¦pªô«T»Ê»â50¥ó¤½¤å¡A«h¨ä¤¤25¥ó±q¤@¯ë·s®×¤¤±¼¸¨¡A¦ı¬O¦pªG¦³¦P®×¥ş»â¤ÎÄò»â«áÄòµ¥¦]¯À¬ÛÃö¤½¤å¤wµM·|³Qªô«T»Ê»â¨ú
+105/02/18: merge 10000,10002,10003,10007  into one item 
+
+---------------------------------*/
   type receive_no_tab is table of spt21.receive_no%type;
-  l_rec        number;
-  l_rec2       number;
+  g_rec        number;
+  g_rec_n      number;
+  g_rec_a      number;
   g_difference number;
+  g_difference_n number; -- the number can get : new-receive
+  g_difference_a number; -- the number can get : append-receive
   g_total      number;
+  g_total_n      number; -- the number has gotten : new-receive
+  g_total_a      number; -- the number has gotten : append-receive
   g_maxNO      number;
   g_holdNO     number;
-  ecode        number;
+  g_ecode        number;
   g_reason     nvarchar2(100);
-  v_rec_no   char(15);
-  v_pre_no   char(15);
-  v_receive_date char(7);
+  err_code        number ;
+  err_msg         varchar2(200);
+  err_func        varchar2(20);
   
   CURSOR list_cursor IS 
-     select distinct spt21.receive_date,  tmp.receive_no, tmp.pre_no 
+    select distinct spt21.receive_date,  tmp.receive_no, tmp.pre_no 
     from  tmp_get_receive tmp join spt21 on  tmp.receive_no = spt21.receive_no
     where  (exists (select processor_no
                       from skill
                      where (case
                              when tmp.skill = 'INVENTION' then  INVENTION
-                             when tmp.skill = 'UTILITY' then   UTILITY
-                             when tmp.skill = 'DESIGN' then    DESIGN
-                             when tmp.skill = 'DERIVATIVE' then  DERIVATIVE
                              when tmp.skill = 'IMPEACHMENT' then IMPEACHMENT
                              when tmp.skill = 'REMEDY' then     REMEDY
                              when tmp.skill = 'PETITION' then  PETITION
@@ -44,104 +51,111 @@
                            end) = '1'
                        and processor_no = p_object_id --:login_user  -- 
                     ) )
+        and is_get = '0'
     order by  spt21.receive_date,  tmp.pre_no,tmp.receive_no
     ;
-     
-/*
-ä¸é™è¦æ±‚ä»¶æ•¸,ä¸€?é ˜å–
-*/
-procedure transfer_p
-  --ç§»è½‰æ–‡è™Ÿ
+    
+    CURSOR list_cursor_p IS 
+    select '' receive_date, receive_no  ,  pre_no
+    from tmp_get_receive 
+    where skill = p_object_id  
+    and is_get = '0'
+       ;
+    
+ procedure get_append(append_num out number)
   is
   begin
+    err_func := 'get_append';
+    select count(1) into append_num
+    from  tmp_get_receive tmp join spt21 on  tmp.receive_no = spt21.receive_no
+    where  (exists (select processor_no
+                      from skill
+                     where (case
+                             when tmp.skill = 'INVENTION' then  INVENTION
+                             when tmp.skill = 'IMPEACHMENT' then IMPEACHMENT
+                             when tmp.skill = 'REMEDY' then     REMEDY
+                             when tmp.skill = 'PETITION' then  PETITION
+                             when tmp.skill = 'DIVIDING' then  DIVIDING
+                             when tmp.skill = 'CONVERTING' then CONVERTING
+                             when tmp.skill = 'DIVIDING_AMEND' then  DIVIDING_AMEND
+                             when tmp.skill = 'CONVERTING_AMEND' then   CONVERTING_AMEND
+                             when tmp.skill = 'MISC_AMEND' then MISC_AMEND
+                           end) = '1'
+                       and processor_no = p_object_id --:login_user  -- 
+                    ) )
+            and substr(pre_no,4,1) = '3'
+            and is_get = '0'
+            ;
+ 
   
-    select count(1) into g_total from tmp_get_receive where skill = p_object_id and is_get = '0';
-   
-    update receive set step_code = '2', processor_no  = p_object_id , process_date = to_char(to_number(to_char(sysdate,'yyyyMMdd'))-19110000)
-          where receive_no in (select receive_no from tmp_get_receive where skill = p_object_id  and is_get = '0');
-    update spt21 set  processor_no  = p_object_id ,process_result = null
-          where receive_no in (select receive_no from tmp_get_receive where skill = p_object_id and is_get = '0');
-          
-          
-    update spt31
-    set sch_processor_no= p_object_id, phy_processor_no = p_object_id
-    where appl_no in 
-    (
-      select appl_no from spt31a
-      where appl_no in
-      (
-      select appl_no from  spt21   where receive_no in (select receive_no from tmp_get_receive where skill = p_object_id and is_get = '0')
-          )
-        and substr(appl_no,10,1) != 'N'
-        and ((step_code between '10' and '19'  and step_code != '15')
-              or step_code = '30'
-              or step_code = '29'
-              or step_code = '49'
-              or  exists (
-                select 1 from  spt21   where receive_no in (select receive_no from tmp_get_receive where skill = p_object_id and is_get = '0')
-               and  type_no in ('16000','16002','22210')
-          )
-        ))
-      ;
-     ---------------------
-    -- record receive transfer history
-    ---------------------
-      INSERT INTO RECEIVE_TRANS_LOG
-      SELECT nvl((select to_number(max(receive_seq))+1 from RECEIVE_TRANS_LOG where receive_no = receive.receive_no ),'1')  seq , 
-              receive.receive_no, receive.appl_no , p_object_id,'2',sysdate,'é ˜è¾¦'
-      from receive
-       where receive_no in (select receive_no from tmp_get_receive where skill = p_object_id  and is_get = '0');
-         
-    update tmp_get_receive  set  is_get ='1'  
-    where receive_no in (select receive_no from tmp_get_receive where skill = p_object_id and is_get = '0');
-              
-    commit;
-  end;
-
-/*--------------
-  åˆ¤æ–·é ˜å–ä»¶æ•¸
-----------------*/
-  procedure transfer
-  --ç§»è½‰æ–‡è™Ÿ
-   is
+  end get_append;
+  
+   procedure get_new(new_num out number)
+  is
   begin
+    err_func := 'get_new';
+      select count(1) into new_num
+    from  tmp_get_receive tmp join spt21 on  tmp.receive_no = spt21.receive_no
+    where  (exists (select processor_no
+                      from skill
+                     where (case
+                             when tmp.skill = 'INVENTION' then  INVENTION
+                             when tmp.skill = 'IMPEACHMENT' then IMPEACHMENT
+                             when tmp.skill = 'REMEDY' then     REMEDY
+                             when tmp.skill = 'PETITION' then  PETITION
+                             when tmp.skill = 'DIVIDING' then  DIVIDING
+                             when tmp.skill = 'CONVERTING' then CONVERTING
+                             when tmp.skill = 'DIVIDING_AMEND' then  DIVIDING_AMEND
+                             when tmp.skill = 'CONVERTING_AMEND' then   CONVERTING_AMEND
+                             when tmp.skill = 'MISC_AMEND' then MISC_AMEND
+                           end) = '1'
+                       and processor_no = p_object_id --:login_user  -- 
+                    ) )
+            and substr(pre_no,4,1) = '2'
+            and is_get = '0'
+            ;
+ 
   
-    OPEN list_cursor;
-   LOOP
-      FETCH list_cursor INTO v_receive_date,v_rec_no,v_pre_no ;
-       EXIT WHEN  list_cursor%NOTFOUND;
-           
-             dbms_output.put_line('v_rec_no:' || v_rec_no || ';v_pre_no:' ||v_pre_no  );
-                  l_rec2 := 0;
-                
-                --- the record should be gotten
-                select count(1) into l_rec2 from receive 
-                where receive_no in (
-                 select distinct receive_no from tmp_get_receive where pre_no = v_pre_no and is_get ='0'                  
-                 ) and  step_code = '0';
-                
-                IF l_rec2 >0 THEN
-                  update receive set step_code = '2', processor_no  = p_object_id, process_date = to_char(to_number(to_char(sysdate,'yyyyMMdd'))-19110000)
-                  where receive_no in (
-                       select distinct receive_no from tmp_get_receive where pre_no = v_pre_no and is_get ='0' 
+  end get_new;
+
+procedure update_receive(l_receive_date char ,l_rec_no char, l_pre_no char)
+  is
+    l_rec number;
+    l_rec_n number;
+    l_rec_a number;
+  begin
+        err_func := 'update_receive';
+         l_rec := 0; --initial 
+               
+         update receive set step_code = '2', processor_no  = p_object_id, process_date = to_char(to_number(to_char(sysdate,'yyyyMMdd'))-19110000)
+          where receive_no in (
+                       select distinct receive_no from tmp_get_receive where pre_no = l_pre_no and is_get ='0' 
                        ) and  step_code = '0';
                        
-                   l_rec2 := SQL%ROWCOUNT; -- the real records are gotten
-                   dbms_output.put_line(l_rec2 || ':'||l_rec2);
-                   IF l_rec2 > 0 THEN
+              l_rec := SQL%ROWCOUNT; -- the real records are gotten
+           --    dbms_output.put_line('l_rec='||l_rec);
+              IF l_rec  > 0 THEN
+                       select sum(case when substr(receive_no,4,1)='2' then '1' else '0' end) ,
+                       sum(case when substr(receive_no,4,1)!='2' then '1' else '0' end)
+                       into l_rec_n, l_rec_a from receive 
+                        where receive_no in (
+                         select distinct receive_no from tmp_get_receive where pre_no = l_pre_no and is_get ='0'                  
+                         ) 
+                         ;
+                      --   dbms_output.put_line('l_rec_n='||l_rec_n || ',l_rec_a='|| l_rec_a);
                        ---------------------
                         -- record receive transfer history
                        ---------------------
                         INSERT INTO RECEIVE_TRANS_LOG
                         SELECT nvl((select to_number(max(receive_seq))+1 from RECEIVE_TRANS_LOG where receive_no = receive.receive_no ),'1')  seq , 
-                                receive.receive_no, receive.appl_no , p_object_id,'2',sysdate,'é ˜è¾¦'
+                                receive.receive_no, receive.appl_no , p_object_id,'2',sysdate,'»â¿ì'
                                 from receive
                                 where receive_no in (
-                                 select distinct receive_no from tmp_get_receive where pre_no = v_pre_no and is_get ='0' 
+                                 select distinct receive_no from tmp_get_receive where pre_no = l_pre_no and is_get ='0' 
                                  ) ;
                        ---------------------------------------------
                         update spt21 set  processor_no  = p_object_id , process_result = null  where receive_no in (
-                         select distinct receive_no from tmp_get_receive where pre_no = v_pre_no and is_get ='0' 
+                         select distinct receive_no from tmp_get_receive where pre_no = l_pre_no and is_get ='0' 
                           ) ;
                         
                         update spt31
@@ -152,7 +166,7 @@ procedure transfer_p
                               where appl_no in
                               (
                                 select appl_no from  spt21   where receive_no in (
-                                    select distinct receive_no from tmp_get_receive where pre_no =  v_pre_no
+                                    select distinct receive_no from tmp_get_receive where pre_no =  l_pre_no
                                     and is_get ='0'             )
                               )
                               and substr(appl_no,10,1) != 'N'
@@ -162,31 +176,166 @@ procedure transfer_p
                                     or step_code = '49'
                                     or  exists (
                                         select 1 from  spt21   where receive_no in (
-                                    select distinct receive_no from tmp_get_receive where pre_no =  v_pre_no
+                                    select distinct receive_no from tmp_get_receive where pre_no =  l_pre_no
+                                    and is_get ='0'             )
+                                    and  type_no in ('16000','16002','22210')
+                                      )
+                                ))
+                            ;  
+                            update appl
+                            set processor_no = p_object_id
+                            where appl_no in 
+                           (
+                            select appl_no from spt31a
+                              where appl_no in
+                              (
+                                select appl_no from  spt21   where receive_no in (
+                                    select distinct receive_no from tmp_get_receive where pre_no =  l_pre_no
+                                    and is_get ='0'             )
+                              )
+                              and substr(appl_no,10,1) != 'N'
+                              and ((step_code between '10' and '19'  and step_code != '15')
+                                    or step_code = '30'
+                                    or step_code = '29'
+                                    or step_code = '49'
+                                    or  exists (
+                                        select 1 from  spt21   where receive_no in (
+                                    select distinct receive_no from tmp_get_receive where pre_no =  l_pre_no
                                     and is_get ='0'             )
                                     and  type_no in ('16000','16002','22210')
                                       )
                                 ))
                             ;  
                           
-                        update tmp_get_receive  set  is_get ='1'  where pre_no = v_pre_no and is_get ='0' ;
+                        update tmp_get_receive  set  is_get ='1',udate=sysdate  where pre_no = l_pre_no and is_get ='0' ;
+                        
+                       g_total_n := g_total_n + l_rec_n;
+                       g_total_a := g_total_a + l_rec_a;
+                       g_total :=  g_total_n + g_total_a ;
+                       
+                         dbms_output.put_line('g_total_n=' ||g_total_n||',g_total_a='|| g_total_a ||',l_rec_n='||l_rec_n ||',l_rec_a='|| l_rec_a);
                     END IF;
                commit;
-               g_total := g_total + l_rec2;
-             END IF;
+
+end;
+
+
+/*
+¤£­­­n¨D¥ó¼Æ,«áÄò¤å¥ş³¡»â¨ú
+*/
+procedure transfer_p
+ --²¾Âà¤å¸¹
+   is
+   v_rec_no   char(15);
+   v_pre_no   char(15);
+   v_receive_date char(7);
+   l_rec     number;
+   l_append_num number;
+  begin
+    err_func := 'transfer_p';
+    l_append_num :=0;
+    
+    OPEN list_cursor_p;
+   LOOP
+      FETCH list_cursor_p INTO v_receive_date,v_rec_no,v_pre_no ;
+       EXIT WHEN  list_cursor_p%NOTFOUND;
+       
+            dbms_output.put_line('v_rec_no:' || v_rec_no || ';v_pre_no:' ||v_pre_no  );
+            
+                l_rec := 0;
+                --- the record should be gotten
+                select count(1)   into l_rec  from receive 
+                where receive_no in (
+                 select distinct receive_no from tmp_get_receive where pre_no = v_pre_no and is_get ='0'                  
+                 ) and  step_code = '0';
+                
+                IF l_rec  >0 THEN
+                    update_receive(v_receive_date,v_rec_no,v_pre_no);
+                END IF;
+      
+   END LOOP;
+   CLOSE list_cursor_p;
+  end;
+/*--------------
+  §PÂ_»â¨ú¥ó¼Æ
+----------------*/
+  procedure transfer
+  --²¾Âà¤å¸¹
+   is
+   v_rec_no   char(15);
+   v_pre_no   char(15);
+   v_receive_date char(7);
+   l_rec     number;
+   l_append_num number;
+   l_new_num    number;
+  begin
+    err_func := 'transfer';
+
+    
+    OPEN list_cursor;
+   LOOP
+      FETCH list_cursor INTO v_receive_date,v_rec_no,v_pre_no ;
+       EXIT WHEN  list_cursor%NOTFOUND;
+       
+         l_append_num :=0;
+         l_new_num :=0;
+         get_append(l_append_num);
+         get_new(l_new_num);
+         
+         if l_new_num =0 and l_append_num=0 then
+            EXIT;
+         end if;
+         
+           l_rec := 0;
+                --- the record should be gotten
+                select count(1)   into l_rec  from receive 
+                where receive_no in (
+                 select distinct receive_no from tmp_get_receive where pre_no = v_pre_no and is_get ='0'                  
+                 ) and  step_code = '0';
+          
+           dbms_output.put_line('l_append_num='||l_append_num||',l_new_num='|| l_new_num);
+         
+         if l_append_num = 0 then 
+              --¤w¨S¦³«áÄò¤å¥i»â,§ï»â·s®×
+              g_difference_n := g_difference_n + (g_difference_a - g_total_a);
+              g_difference_a := g_total_a;
+         else
+             if  g_total_a >= g_difference_a and substr(v_pre_no,4,1) ='3' then
+                  l_rec :=0;
+             end if;
+         end if;
+         if l_new_num = 0 then
+               g_difference_a := g_difference_a + (g_difference_n - g_total_n);
+               g_difference_n := g_total_n;
+         else
+               if  g_total_n >= g_difference_n and substr(v_pre_no,4,1) ='2' then
+                   l_rec :=0;
+             end if;
+         end if;
+         dbms_output.put_line('g_difference_n='||g_difference_n ||',g_difference_a='||g_difference_a);
+         dbms_output.put_line('v_receive_date:' || v_receive_date ||'v_rec_no:' || v_rec_no || ';v_pre_no:' ||v_pre_no  );
+               
+              
+               
+                IF l_rec  >0 THEN
+                    update_receive(v_receive_date,v_rec_no,v_pre_no);
+                END IF;
+                
+               dbms_output.put_line('g_total='||g_total|| ',g_difference='||g_difference);
        EXIT WHEN g_total >= g_difference;
    END LOOP;
    CLOSE list_cursor;
-  
-  
+    
   end;
+    
   procedure related_case2
-  --  å¤–åŒ…è‡ªå‹•é€€æ–‡,å’Œå¾ŒçºŒæ–‡ä¸€èµ·é ˜
-  --  éœ€æ•´åŒ…å…¨é ˜,åˆ¤æ–·æ¢ä»¶
+  --  ¥~¥]¦Û°Ê°h¤å,©M«áÄò¤å¤@°_»â
+  --  »İ¾ã¥]¥ş»â,§PÂ_±ø¥ó
    is
    -- v_collect receive_no_tab;
   begin
-   dbms_output.put_line('update å¤–åŒ…è‡ªå‹•é€€æ–‡');
+   err_func := 'related_case2';
+   dbms_output.put_line('update ¥~¥]¦Û°Ê°h¤å');
     update receive
        set return_no = '1', step_code = '0', processor_no = '70012'
      where receive_no in
@@ -239,7 +388,7 @@ procedure transfer_p
                       );                                         
     commit;                                         
     insert into tmp_get_receive
-    select receive_no , pre_no ,'related_case2','MISC_AMEND','å¤–åŒ…è‡ªå‹•é€€æ–‡,å’Œå¾ŒçºŒæ–‡ä¸€èµ·é ˜','0'
+    select receive_no , pre_no ,'related_case2','MISC_AMEND','¥~¥]¦Û°Ê°h¤å,©M«áÄò¤å¤@°_»â','0',sysdate
       from (Select a.receive_no, a.receive_no pre_no
               from receive a
              where a.return_no = '1'
@@ -257,45 +406,55 @@ procedure transfer_p
                )
      ;
     commit;
-  --  g_reason := 'å¤–åŒ…è‡ªå‹•é€€æ–‡,å’Œå¾ŒçºŒæ–‡ä¸€èµ·é ˜';
+  --  g_reason := '¥~¥]¦Û°Ê°h¤å,©M«áÄò¤å¤@°_»â';
 
   end related_case2;
 
 begin
   g_difference := p_quota;
   g_total      := 0;
-  l_rec        := 0;
-
-  SELECT count(1) into l_rec from receive where step_code = '0' and return_no not in ('4','A','B','C');
+  g_total_n    := 0;
+  g_total_a    := 0;
+  g_rec        := 0;
+  err_func := 'Main';
+  
+  SELECT count(1) into g_rec from receive where step_code = '0' and return_no not in ('4','A','B','C');
  
  ------------------------------------------
  -- Batch , for test
  --------------------------------------------
-  -- CHECK_RECEIVE(p_out_msg);
+  -- ¥~¥]°h¿ì­«»â
   related_case2;
+  -- «áÄò¤åÀu¥ı»â¨ú
   transfer_p;
-  
+  --¨ú±o³Ì¤j»â¨ú¤½¤å¼Æ
   select pname into g_maxNO from parameter where para_no = 'MAX_REC';
-  select count(1) into g_holdNO from receive where processor_no = p_object_id and step_code in ('2','3','5');
+  --¨ú±o¥Ø«e¿ì²z¤¤ªº¤½¤å¼Æ
+  select count(1) into g_holdNO from receive where processor_no = p_object_id and step_code > '0' and step_code <'8';
   
   IF g_holdNO >= g_maxNO THEN
-     p_out_msg := 'æ‚¨çš„ç·šä¸Šå…¬æ–‡å·²è¶…éæœ€å¤§ä»¶æ•¸:' || g_maxNO;
+     p_out_msg := '±zªº½u¤W¤½¤å¤w¶W¹L³Ì¤j¥ó¼Æ:' || g_maxNO;
   ELSE
+  -- ¨M©w»â¨ú¥ó¼Æ
     IF g_maxNO - g_holdNO < p_quota THEN
-        g_difference := g_maxNO - g_holdNO ;
+        g_difference := g_maxNO - (g_holdNO - g_total_n - g_total_a) ; -- ¥i»â¼Æ     
     ELSE
-        g_difference := p_quota;
+        g_difference_n := p_quota;
     END IF;
-    
+    -- ­pºâ·s®×¤Î«áÄò¤å»â¨ú¥ó¼Æ
+    g_difference_n :=  ceil(g_difference/2)-g_total_n;
+    g_difference_a :=  floor(g_difference/2)-g_total_a;
+    dbms_output.put_line('g_difference_n='||g_difference_n ||',g_difference_a='||g_difference_a);
+    -- »â¿ì
     transfer;
     
-     IF l_rec = 0 THEN
-       p_out_msg := 'ç„¡å¯é ˜ä¹‹ç·šä¸Šå…¬æ–‡';
+     IF g_rec = 0 THEN
+       p_out_msg := 'µL¥i»â¤§½u¤W¤½¤å';
      ELSE
         IF g_total = 0 THEN
-           p_out_msg := 'ç„¡æ¬Šé™å¯é ˜';
+           p_out_msg := 'µLÅv­­¥i»â';
         ELSE
-          p_out_msg := 'é ˜å–' || g_total || 'ç­†ä»¶æ•¸';
+          p_out_msg := '»â¨ú·s®×:' || g_total_n || ' ¥ó,«áÄò¤å:' || g_total_a || ' ¥ó';
         END IF;
      END IF;
   END IF;
@@ -304,9 +463,12 @@ begin
 
   dbms_output.put_line(p_out_msg);
 EXCEPTION
-  WHEN OTHERS THEN
-    ecode     := SQLCODE;
-    p_out_msg := SQLCODE || ' : ' || SQLERRM;
-    dbms_output.put_line('Error Code:' || ecode || '; Error Message:' ||
-                         p_out_msg);
+   when others then
+    rollback;
+    err_code := SQLCODE;
+    err_msg := SUBSTR(SQLERRM, 1, 200);
+   
+    raise_application_error(-20001,to_char(sysdate,'yyyyMMdd hh24:mm:ss') ||':Procedure GET_RECEIVE_NEW[' || err_func || '] error was encountered - '||SQLCODE||' -ERROR- '||SQLERRM);
 END GET_RECEIVE;
+
+/

@@ -1,7 +1,12 @@
-ï»¿create or replace PROCEDURE        BATCH_APPROVER_LIST (p_in_processor_no in char,
+--------------------------------------------------------
+--  DDL for Procedure BATCH_APPROVER_LIST
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "S193"."BATCH_APPROVER_LIST" (p_in_processor_no in char,
                                                 p_out_list        out sys_refcursor) is
   /*
-  --æŸ¥é©—å„€è¡¨æ¿æœªé€šéæ‰¹æ¬¡
+  --¬dÅç»öªíªO¥¼³q¹L§å¦¸
   ModifyDate:104/07/08
   0703: using ap.spm72  for limited approver
   0706: add manager as approver condition for spm72 has no data of the processor_no
@@ -25,7 +30,7 @@ begin
        AND ((trim(B1.Outsourcing) in  (  select processor_no
                           from ap.spm72 where dept_no = '70012' and checker = p_in_processor_no))  -- 
           or ( p_in_processor_no in  (  select processor_no
-                          from ap.spm63 where dept_no = '70012' and title in  ('ç§‘é•·','ç§‘å“¡') 
+                          from ap.spm63 where dept_no = '70012' and title in  ('¬ìªø','¬ì­û') 
                           ))  -- 
           )
        AND B1.BATCH_SEQ = (SELECT MAX(BATCH_SEQ)
@@ -35,3 +40,5 @@ begin
      ORDER BY B1.BATCH_NO DESC;
 
 end batch_approver_list;
+
+/

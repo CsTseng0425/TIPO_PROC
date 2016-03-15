@@ -1,7 +1,12 @@
-ï»¿create or replace procedure batch_daily_count(p_in_batch_no  in varchar2,
+--------------------------------------------------------
+--  DDL for Procedure BATCH_DAILY_COUNT
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "S193"."BATCH_DAILY_COUNT" (p_in_batch_no  in varchar2,
                                               p_in_batch_seq in varchar2,
                                               p_out_list     out sys_refcursor) is
-  --æ‰¹æ¬¡ä»¶æ•¸
+  --§å¦¸¥ó¼Æ
 begin
   open p_out_list for
     SELECT B.BATCH_NO,
@@ -34,3 +39,5 @@ begin
               B.OUTSOURCING;
 
 end batch_daily_count;
+
+/

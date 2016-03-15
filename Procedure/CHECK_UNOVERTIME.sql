@@ -1,4 +1,9 @@
-ï»¿create or replace PROCEDURE        CHECK_UNOVERTIME ( p_rec out int)
+--------------------------------------------------------
+--  DDL for Procedure CHECK_UNOVERTIME
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "S193"."CHECK_UNOVERTIME" ( p_rec out int)
 is
     p_msg            varchar2(100);
     ap_code          varchar2(10);
@@ -17,12 +22,14 @@ is
  ---------------------------
  -- remove overtime or taketurn status
  -- divide_code = 1 is overtime project / divide_code = 2 is taketurn project
- -- ModifyDate : 104/09/17
+ -- ModifyDate : 104/12/23
  -- 
- --  å…ˆåˆ¤æ–·æ˜¯å¦è¦é€²å…¥è‡ªå‹•è¼ªè¾¦,å†åˆ¤æ–·æ˜¯å¦å€‹äººé€¾æœŸ
+ --  ¥ı§PÂ_¬O§_­n¶i¤J¦Û°Ê½ü¿ì,¦A§PÂ_¬O§_­Ó¤H¹O´Á
  -- Modify : update the condition 
  -- 104/08/11 : remove takturn status
  -- 104/09/17 : new project doesn't set the outsourcing condistion 
+ -- 104/12/23 :  handle the situation: spt32 has not data => nvl(s32_3.cnt,0)
+ -- 104/12/23 : Åı»PÅÜ§ó¹O´Á±ø¥ó½Õ¾ã,®×¥ó¶¥¬q§O©ó10 ~ 20 (¤£¥]§t 10, 20)
  ---------------------------------
 PROCEDURE Check_Case1(p_appl_no in char, p_is_exist out number)
   -- 
@@ -32,7 +39,7 @@ BEGIN
      ap_code := 'case1';
      
     ----------------
-    -- 'æ–°æ¡ˆ,é€¾æœŸ:'
+    -- '·s®×,¹O´Á:'
     ---------------
    select case when  count(1) >0 then '1' else '0' end into p_is_exist
     from spt41 s41
@@ -84,7 +91,7 @@ BEGIN
     where   trunc(sysdate) > case  when  valid_tw_date2(FILE_LIM_DATE)=0  then  trunc(to_date(to_char(to_number(substr(s41.FILE_LIM_DATE,1,3))+1911) || substr( s41.FILE_LIM_DATE,4,4),'yyyyMMdd')+20 )
                            else  trunc(to_date('21991231','yyyyMMdd') )
                       end   
-     and  (s32.isOverTime = '1'  or s32_2.cnt =0  or s32_3.cnt =0)
+     and  (s32.isOverTime = '1'  or nvl(s32_2.cnt,0) =0  or nvl(s32_3.cnt,0) =0)
      and (select count(1) from spt21 s21 where s21.appl_no = s41.appl_no and process_result is null) =0
     --  and  exists (select 1 from spm63 where  processor_no = s41.processor_no  and quit_date is  null)
     --  and  substr(s41.processor_no,1,1)!='P'
@@ -92,12 +99,12 @@ BEGIN
       ;
 
      
- --   dbms_output.put_line('æ–°æ¡ˆ,é€¾æœŸ:');
+ --   dbms_output.put_line('·s®×,¹O´Á:');
  
 END Check_Case1;
   
   ----------------------------
-  --å†å¯©ç¨‹åºå¯©æŸ¥
+  --¦A¼fµ{§Ç¼f¬d
   -----------------------------
    
   PROCEDURE Check_Case2(p_appl_no in char, p_is_exist out number)
@@ -107,7 +114,7 @@ END Check_Case1;
   BEGIN
    ap_code := 'case2';
         
-     ---å†å¯©,é€¾æœŸ
+     ---¦A¼f,¹O´Á
      select case when  count(1) >0 then '1' else '0' end into p_is_exist
      from spt41 s41
      join 
@@ -128,12 +135,12 @@ END Check_Case1;
       and s41.appl_no = p_appl_no
       ;
      
-    --    dbms_output.put_line('å¯©æŸ¥é€¾æœŸ:');
+    --    dbms_output.put_line('¼f¬d¹O´Á:');
  
   END Check_Case2;
   
   ----------------------------
-  -- å¾…å¯¦é«”å¯©æŸ¥
+  -- «İ¹êÅé¼f¬d
   -----------------------------  
   PROCEDURE Check_Case3(p_appl_no in char, p_is_exist out number)
   --  
@@ -163,11 +170,11 @@ END Check_Case1;
       and s41.appl_no = p_appl_no
      ;
      
-  --    dbms_output.put_line('å¯¦é«”å¯©æŸ¥,é€¾æœŸ');
+  --    dbms_output.put_line('¹êÅé¼f¬d,¹O´Á');
  
   END check_case3;
   ----------------------------
-  -- è®“èˆ‡
+  -- Åı»P
   -----------------------------
    PROCEDURE Check_Case4(p_appl_no in char, p_is_exist out number)
   --  
@@ -183,9 +190,9 @@ END Check_Case1;
       select max(spm56.form_file_a) form_file_a, spm56.appl_no  ,s31a.step_code
       from spm56 
       join spt31a s31a on spm56.appl_no = s31a.appl_no
-   --   join spt41 s41 on S41.Form_File_A = spm56.form_file_a 
-      where  substr(spm56.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜æ¡ˆ
-       and s31a.step_code in ('16','20')
+      where  substr(spm56.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
+       and s31a.step_code > '10'
+       and s31a.step_code < '20'
        and s31a.appl_no = p_appl_no
        and s31a.appl_no not in ( select s.appl_no from spt41 s  join spm56 s56 on s.form_file_a = s56.form_file_a
                              where  s.appl_no = s31a.appl_no 
@@ -206,12 +213,12 @@ END Check_Case1;
        and s41.appl_no = p_appl_no
      ;
     
- --     dbms_output.put_line('è®“èˆ‡,é€¾æœŸ:' || p_is_exist);
+ --     dbms_output.put_line('Åı»P,¹O´Á:' || p_is_exist);
 
 
   END check_case4;
   ----------------------------
-  -- è®Šæ›´
+  -- ÅÜ§ó
   -----------------------------  
   PROCEDURE Check_Case5(p_appl_no in char, p_is_exist out number)
   --  
@@ -228,8 +235,9 @@ END Check_Case1;
       select max(spm56.form_file_a) form_file_a, spm56.appl_no , s31a.type_no ,s31a.step_code
       from spm56 
       join spt31a s31a on spm56.appl_no = s31a.appl_no
-      where  substr(s31a.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜æ¡ˆ
-       and s31a.step_code in ('16','20')
+      where  substr(s31a.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
+       and s31a.step_code > '10'
+       and s31a.step_code < '20'
        and s31a.appl_no = p_appl_no
         group by spm56.appl_no  , s31a.type_no  ,s31a.step_code
        )  s56 on s41.form_file_a = s56.form_file_a and s41.appl_no = s56.appl_no
@@ -238,7 +246,7 @@ END Check_Case1;
       from  spt41 s41
       where     ( s41.file_d_flag is null or s41.file_d_flag = ' ')
        and s41.issue_type = '40009'
-       and  substr(s41.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜æ¡ˆ
+       and  substr(s41.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
        and (select count(1) from spt21 s21 where s21.appl_no = s41.appl_no and process_result is null) =0
        and not exists ( select 1 from spm56 where spm56.appl_no = s41.appl_no and spm56.form_id in ('C09','C09-1','C09-2','C09-3','C10','P03-1','A06','P32') )
        and (select count(1) from spt41  where spt41.appl_no = s41.appl_no and spt41.process_result is null) =0
@@ -248,12 +256,12 @@ END Check_Case1;
        and s41.appl_no = p_appl_no
       ;
     
-    --   dbms_output.put_line('è®Šæ›´,é€¾æœŸ:');
+    --   dbms_output.put_line('ÅÜ§ó,¹O´Á:');
 
  
   END Check_Case5;
 ----------------------------
--- å»¶é•·
+-- ©µªø
 ----------------------------- 
   PROCEDURE Check_Case6(p_appl_no in char, p_is_exist out number)
   --  
@@ -284,7 +292,7 @@ BEGIN
        and s41.appl_no = p_appl_no
       ;
       
-   --   dbms_output.put_line('å»¶é•·,é€¾æœŸ');
+   --   dbms_output.put_line('©µªø,¹O´Á');
  
   END Check_Case6;
  
@@ -352,3 +360,5 @@ EXCEPTION
    p_msg := ap_code || ':' || SQLCODE || ':' || SQLERRM; 
     dbms_output.put_line('Error Code:' || ecode || '; Error Message:' || p_msg);
 END CHECK_UNOVERTIME;
+
+/

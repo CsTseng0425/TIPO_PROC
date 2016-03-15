@@ -1,7 +1,12 @@
-Ôªøcreate or replace PROCEDURE        BATCH_COUNT_APPEND (p_in_batch_no    in varchar2,
+--------------------------------------------------------
+--  DDL for Procedure BATCH_COUNT_APPEND
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "S193"."BATCH_COUNT_APPEND" (p_in_batch_no    in varchar2,
                                                p_in_batch_seq   in varchar2,
                                                p_out_has_append out varchar2) is
-  -- ÊòØÂê¶ÊúâÂæåÁ∫åÊñá
+  -- ¨Oß_¶≥´·ƒÚ§Â
 begin
 
   SELECT COUNT(1) AS HAS_APPEND
@@ -12,3 +17,5 @@ begin
      AND BATCH_HAS_APPEND(APPL_NO) <> 0;
 
 end batch_count_append;
+
+/

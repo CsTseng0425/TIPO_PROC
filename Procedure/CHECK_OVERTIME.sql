@@ -1,4 +1,9 @@
-ï»¿create or replace PROCEDURE        CHECK_OVERTIME ( p_rec out int)
+--------------------------------------------------------
+--  DDL for Procedure CHECK_OVERTIME
+--------------------------------------------------------
+set define off;
+
+  CREATE OR REPLACE PROCEDURE "S193"."CHECK_OVERTIME" ( p_rec out int)
 is
     ecode            number;
     ap_code          varchar2(100);
@@ -6,6 +11,7 @@ is
     rec1 number;
     rec2 number;
     rec_cnt number;
+    
     type APPL_NO_TAB is table of spt41.appl_no%type;
     type FORM_FILE_A_TAB is table of spt41.FORM_FILE_A%type;
     type STEP_CODE_TAB is table of spt31a.step_code%type;  
@@ -13,24 +19,28 @@ is
     type REASON_TAB is table of varchar2(50);
   
   /*-------------------------------------
-  -- ModifyDate : 104/09/17
+  -- ModifyDate : 104/12/23
   -- record project status on 193 system
-  --1:å€‹äººé€¾æœŸã€2:è‡ªå‹•è¼ªè¾¦ã€
+  --1:­Ó¤H¹O´Á¡B2:¦Û°Ê½ü¿ì¡B
   -- Modify: overtime reason
   -- taketurn processor_no start from the next  of last time recorded in appl_para where sys='OVERTIME' and subsys = 'TAKETURN'
      104/07/22 : not to write back spt31.sch_processor_no
      104/09/17 :(1) modify the return record count 
                 (2) if overtime record is exists , do nothing 
+     104/12/09 : handle the situation: spt32 has not data => nvl(s32_3.cnt,0)
+     104/12/23 : Åý»PÅÜ§ó¹O´Á±ø¥ó½Õ¾ã,®×¥ó¶¥¬q§O©ó10 ~ 20 (¤£¥]§t 10, 20)
   -------------------------------------*/
   PROCEDURE Update_DivideCode(g_app in APPL_NO_TAB,g_form_file_a in FORM_FILE_A_TAB, g_step_code in STEP_CODE_TAB ,g_process_no in PROCESSOR_NO_TAB,g_reason in varchar2)
   is
   begin
+    ap_code := 'Update_DivideCode';
     for l_idx in 1 .. g_app.count
       loop
+     
          select count(1) into rec1 from appl where appl_no = g_app(l_idx)  ;
-         --- å·²é€¾æœŸæˆ–ç§»é™¤é€¾æœŸ ä¸ç”¨å†åˆ—å…¥
+         --- ¤w¹O´Á©Î²¾°£¹O´Á ¤£¥Î¦A¦C¤J
          select count(1) into rec2 from appl where appl_no = g_app(l_idx) and is_overtime ='0' and divide_code = '0';
-         
+      --    dbms_output.put_line('·s¼W:¹O´Á ' || g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx) || '  rec1:' ||rec1 || '  rec2:' || rec2); 
          insert into tmp_appl_overtime values( g_app(l_idx),g_form_file_a(l_idx),g_step_code(l_idx),g_process_no(l_idx),g_reason);
          
          if rec1 = 0  then
@@ -38,24 +48,25 @@ is
                 select g_app(l_idx) ,  g_step_code(l_idx) ,'1',g_reason,null,0,1,'1',null,to_char(to_number(to_char(sysdate,'yyyyMMdd'))-19110000), g_process_no(l_idx),null,'0'
                 from dual; 
               
-         --   dbms_output.put_line('æ–°å¢ž:é€¾æœŸ ' || g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx)); 
+         --   dbms_output.put_line('·s¼W:¹O´Á ' || g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx)); 
           end if;
           if rec1 !=0 and rec2>0 then
+          --   dbms_output.put_line('­×§ï:¹O´Á ' ||  g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx)); 
              update appl
               set step_code =  g_step_code(l_idx), divide_code = '1' , processor_no = g_process_no(l_idx), IS_OVERTIME = '1',divide_reason = g_reason
               where appl_no =  g_app(l_idx)
               and divide_code != '1'; 
-            
-         --    dbms_output.put_line('ä¿®æ”¹:é€¾æœŸ ' ||  g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx)); 
+                     
           end if;
            rec_cnt := rec_cnt + 1;
       end loop;
      commit;
   end Update_DivideCode;
-    --1:å€‹äººé€¾æœŸã€2:è‡ªå‹•è¼ªè¾¦ã€
+    --1:­Ó¤H¹O´Á¡B2:¦Û°Ê½ü¿ì¡B
   PROCEDURE Update_TakeTurn(g_app in APPL_NO_TAB,g_form_file_a in FORM_FILE_A_TAB, g_step_code in STEP_CODE_TAB ,g_process_no in PROCESSOR_NO_TAB,g_reason in REASON_TAB)
   is
   begin
+    ap_code := 'Update_TakeTurn';
     for l_idx in 1 .. g_app.count
       loop
          select count(1) into rec1 from appl where appl_no = g_app(l_idx) ;
@@ -69,22 +80,22 @@ is
                 select g_app(l_idx) ,  g_step_code(l_idx) ,'2',g_reason(l_idx),null,0,1,'0',null,to_char(to_number(to_char(sysdate,'yyyyMMdd'))-19110000), g_process_no(l_idx),null,'0'
                 from dual; 
                
-        --    dbms_output.put_line('æ–°å¢ž:è‡ªå‹•è¼ªè¾¦ ' || g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx)); 
+        --    dbms_output.put_line('·s¼W:¦Û°Ê½ü¿ì ' || g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx)); 
           else
             update appl
               set step_code =  g_step_code(l_idx), divide_code = '2' , processor_no =null, ASSIGN_DATE = null, IS_OVERTIME = '1' ,divide_reason = g_reason(l_idx)
               where appl_no =  g_app(l_idx)
               and divide_code != '2'; 
            
-          --   dbms_output.put_line('ä¿®æ”¹:è‡ªå‹•è¼ª ' ||  g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx)); 
+          --   dbms_output.put_line('­×§ï:¦Û°Ê½ü ' ||  g_app(l_idx) || ':' || g_step_code(l_idx) || ':' || g_process_no(l_idx)); 
           end if;
            rec_cnt := rec_cnt + 1;
       end loop;
      commit;
   end Update_TakeTurn;
  ---------------------------
- --  æ–°æ¡ˆ-åˆå¯©ç¨‹åºå¯©æŸ¥, è‡ªå‹•è¼ªè¾¦
- --  å…ˆåˆ¤æ–·æ˜¯å¦è¦é€²å…¥è‡ªå‹•è¼ªè¾¦,å†åˆ¤æ–·æ˜¯å¦å€‹äººé€¾æœŸ
+ --  ·s®×-ªì¼fµ{§Ç¼f¬d, ¦Û°Ê½ü¿ì
+ --  ¥ý§PÂ_¬O§_­n¶i¤J¦Û°Ê½ü¿ì,¦A§PÂ_¬O§_­Ó¤H¹O´Á
  ---------------------------
 PROCEDURE Check_Case1_1
   -- 
@@ -96,10 +107,10 @@ PROCEDURE Check_Case1_1
      v_reason REASON_TAB;
 BEGIN
      ap_code := 'case1_1';
-         
--- è‡ªå‹•è¼ªè¾¦
+    
+-- ¦Û°Ê½ü¿ì
  
-     select s41.appl_no,s41.form_file_a ,s56.step_code, s41.processor_no, case when substr(s41.processor_no,1,1) ='P' then 'æ–°ç”³è«‹æ¡ˆå¤–åŒ…è¼ªè¾¦' else 'æ–°ç”³è«‹æ¡ˆé›¢è·è¼ªè¾¦' end 
+     select s41.appl_no,s41.form_file_a ,s56.step_code, s41.processor_no, case when substr(s41.processor_no,1,1) ='P' then '·s¥Ó½Ð®×¥~¥]½ü¿ì' else '·s¥Ó½Ð®×Â÷Â¾½ü¿ì' end 
             bulk collect
             into v_app, v_form_file_a, v_step_code ,v_process_no,v_reason
      from spt41 s41
@@ -148,19 +159,19 @@ BEGIN
     where   trunc(sysdate) > case  when  valid_tw_date2(FILE_LIM_DATE)=0  then  trunc(to_date(to_char(to_number(substr(s41.FILE_LIM_DATE,1,3))+1911) || substr( s41.FILE_LIM_DATE,4,4),'yyyyMMdd')+20 )
                            else  trunc(to_date('21991231','yyyyMMdd') )
                       end   
-     and  (s32.isOverTime = '1'  or s32_2.cnt =0  or s32_3.cnt =0)
+     and  (s32.isOverTime = '1'  or nvl(s32_2.cnt,0) =0  or nvl(s32_3.cnt,0) =0)
      and (select count(1) from spt21 s21 where s21.appl_no = s41.appl_no and process_result is null) =0
      and  exists (select 1 from spm63 where   (processor_no = s41.processor_no or substr(s41.processor_no,1,1)='P' ) and quit_date is not null)
      -- and s41.appl_no = '103112248' -- for test
     ;
-   --   dbms_output.put_line('æ–°æ¡ˆ,è‡ªå‹•è¼ªè¾¦:' || v_app.count);
+   --   dbms_output.put_line('·s®×,¦Û°Ê½ü¿ì:' || v_app.count);
     Update_TakeTurn(v_app ,v_form_file_a, v_step_code ,v_process_no,v_reason);
-  --   dbms_output.put_line('æ–°æ¡ˆ,è‡ªå‹•è¼ªè¾¦:');
+  --   dbms_output.put_line('·s®×,¦Û°Ê½ü¿ì:');
       
 END Check_Case1_1;
  ---------------------------
- --  æ–°æ¡ˆ-åˆå¯©ç¨‹åºå¯©æŸ¥,é€¾æœŸ
- --  å…ˆåˆ¤æ–·æ˜¯å¦è¦é€²å…¥è‡ªå‹•è¼ªè¾¦,å†åˆ¤æ–·æ˜¯å¦å€‹äººé€¾æœŸ
+ --  ·s®×-ªì¼fµ{§Ç¼f¬d,¹O´Á
+ --  ¥ý§PÂ_¬O§_­n¶i¤J¦Û°Ê½ü¿ì,¦A§PÂ_¬O§_­Ó¤H¹O´Á
  ---------------------------------
 PROCEDURE Check_Case1_2
   -- 
@@ -173,7 +184,7 @@ BEGIN
      ap_code := 'case1_2';
      
     ----------------
-    -- 'æ–°æ¡ˆ,é€¾æœŸ:'
+    -- '·s®×,¹O´Á:'
     ---------------
    select s41.appl_no, s41.form_file_a , s56.step_code, s41.processor_no
     bulk collect
@@ -224,20 +235,20 @@ BEGIN
     where   trunc(sysdate) > case  when  valid_tw_date2(FILE_LIM_DATE)=0  then  trunc(to_date(to_char(to_number(substr(s41.FILE_LIM_DATE,1,3))+1911) || substr( s41.FILE_LIM_DATE,4,4),'yyyyMMdd')+20 )
                            else  trunc(to_date('21991231','yyyyMMdd') )
                       end   
-     and  (s32.isOverTime = '1'  or s32_2.cnt =0  or s32_3.cnt =0)
+     and  (s32.isOverTime = '1'  or nvl(s32_2.cnt,0) =0  or nvl(s32_3.cnt,0) =0)
      and (select count(1) from spt21 s21 where s21.appl_no = s41.appl_no and process_result is null) =0
       and  exists (select 1 from spm63 where  processor_no = s41.processor_no  and quit_date is  null)
       and  substr(s41.processor_no,1,1)!='P'
   --    and s41.appl_no in ('103302035','103210096','103121597','103117249','103301997') -- for test
       ;
 
-     Update_DivideCode(v_app,v_form_file_a , v_step_code ,v_process_no,'æ–°æ¡ˆé€¾æœŸ');
- --   dbms_output.put_line('æ–°æ¡ˆ,é€¾æœŸ:');
+     Update_DivideCode(v_app,v_form_file_a , v_step_code ,v_process_no,'·s®×¹O´Á');
+ --   dbms_output.put_line('·s®×,¹O´Á:');
  
 END Check_Case1_2;
   
   ----------------------------
-  --å†å¯©ç¨‹åºå¯©æŸ¥
+  --¦A¼fµ{§Ç¼f¬d
   -----------------------------
   PROCEDURE Check_Case2_1
   --
@@ -251,9 +262,9 @@ END Check_Case1_2;
    ap_code := 'case2_1';
          
    
-      -- è‡ªå‹•è¼ªè¾¦
+      -- ¦Û°Ê½ü¿ì
   
-      select s41.appl_no, s41.form_file_a,s56.step_code, s41.processor_no ,'é›¢è·äººå“¡å†å¯©è¼ªè¾¦'
+      select s41.appl_no, s41.form_file_a,s56.step_code, s41.processor_no ,'Â÷Â¾¤H­û¦A¼f½ü¿ì'
             bulk collect
             into v_app,v_form_file_a, v_step_code ,v_process_no,v_reason
       from spt41 s41
@@ -274,7 +285,7 @@ END Check_Case1_2;
       ;
  
       Update_TakeTurn(v_app ,v_form_file_a, v_step_code ,v_process_no,v_reason);
-  --   dbms_output.put_line('å¯©æŸ¥è‡ªå‹•è¼ªè¾¦');
+  --   dbms_output.put_line('¼f¬d¦Û°Ê½ü¿ì');
       
   END Check_Case2_1;
   
@@ -288,7 +299,7 @@ END Check_Case1_2;
   BEGIN
    ap_code := 'case2_2';
         
-     ---å†å¯©,é€¾æœŸ
+     ---¦A¼f,¹O´Á
        select s41.appl_no , s41.form_file_a,s56.step_code, s41.processor_no
          bulk collect
          into v_app ,v_form_file_a , v_step_code ,v_process_no
@@ -309,13 +320,13 @@ END Check_Case1_2;
       and exists (select 1 from spm63 where  processor_no = s41.processor_no and quit_date is  null)
   --    and s41.appl_no in ('101305523','101150129','102115604')  -- for test
       ;
-     Update_DivideCode(v_app ,v_form_file_a, v_step_code ,v_process_no,'å†å¯©é€¾æœŸ');
-    --    dbms_output.put_line('å†å¯©é€¾æœŸ:');
+     Update_DivideCode(v_app ,v_form_file_a, v_step_code ,v_process_no,'¦A¼f¹O´Á');
+    --    dbms_output.put_line('¦A¼f¹O´Á:');
  
   END Check_Case2_2;
   
   ----------------------------
-  -- å¾…å¯¦é«”å¯©æŸ¥
+  -- «Ý¹êÅé¼f¬d
   -----------------------------
   PROCEDURE Check_Case3_1
   --  
@@ -329,7 +340,7 @@ END Check_Case1_2;
   ap_code := 'case3_1';
          
       
-     select s41.appl_no, s41.form_file_a,s56.step_code, s41.processor_no ,'é›¢è·äººå“¡å¯¦é«”å¯©æŸ¥è¼ªè¾¦'
+     select s41.appl_no, s41.form_file_a,s56.step_code, s41.processor_no ,'Â÷Â¾¤H­û¹êÅé¼f¬d½ü¿ì'
             bulk collect
             into v_app,v_form_file_a, v_step_code ,v_process_no,v_reason
       from spt41 s41
@@ -351,7 +362,7 @@ END Check_Case1_2;
    
         
      Update_TakeTurn(v_app,v_form_file_a , v_step_code ,v_process_no,v_reason);
-  --   dbms_output.put_line('é›¢è·äººå“¡å¯¦é«”å¯©æŸ¥è¼ªè¾¦');
+  --   dbms_output.put_line('Â÷Â¾¤H­û¹êÅé¼f¬d½ü¿ì');
  
   END check_case3_1;
   
@@ -385,12 +396,12 @@ END Check_Case1_2;
       and s41.appl_no >= '091132001'
       and exists ( select 1 from spt31 where spt31.appl_no = s41.appl_no and spt31.material_appl_date is  null)
       ;
-     Update_DivideCode(v_app ,v_form_file_a, v_step_code ,v_process_no,'å¯¦é«”å¯©æŸ¥é€¾æœŸ');
-  --    dbms_output.put_line('å¯¦é«”å¯©æŸ¥,é€¾æœŸ');
+     Update_DivideCode(v_app ,v_form_file_a, v_step_code ,v_process_no,'¹êÅé¼f¬d¹O´Á');
+  --    dbms_output.put_line('¹êÅé¼f¬d,¹O´Á');
  
   END check_case3_2;
   ----------------------------
-  -- è®“èˆ‡
+  -- Åý»P
   -----------------------------
   PROCEDURE Check_Case4_1
   --  
@@ -403,10 +414,10 @@ END Check_Case1_2;
   BEGIN
   ap_code := 'case4_1';
         
-   -- è‡ªå‹•è¼ªè¾¦
+   -- ¦Û°Ê½ü¿ì
 
      
-      select s41.appl_no , s41.form_file_a,s56.step_code, s41.processor_no,'é›¢è·äººå“¡è®“èˆ‡è¼ªè¾¦'
+      select s41.appl_no , s41.form_file_a,s56.step_code, s41.processor_no,'Â÷Â¾¤H­ûÅý»P½ü¿ì'
             bulk collect
             into v_app,v_form_file_a, v_step_code ,v_process_no,v_reason
            from  spt41 s41
@@ -415,9 +426,9 @@ END Check_Case1_2;
       select max(spm56.form_file_a) form_file_a, spm56.appl_no  ,s31a.step_code
       from spm56 
       join spt31a s31a on spm56.appl_no = s31a.appl_no
-   --   join spt41 s41 on S41.Form_File_A = spm56.form_file_a 
-      where  substr(spm56.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜Žæ¡ˆ
-       and s31a.step_code in ('16','20')
+      where  substr(spm56.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
+       and s31a.step_code > '10'
+       and s31a.step_code < '20'
        and s31a.appl_no not in ( select s.appl_no from spt41 s  join spm56 s56 on s.form_file_a = s56.form_file_a
                              where  s.appl_no = s31a.appl_no 
                              and s.issue_no > (select max(issue_no) from spt41 where s.appl_no = spt41.appl_no   and issue_type = '40007')
@@ -436,7 +447,7 @@ END Check_Case1_2;
        and exists (select 1 from spm63 where  processor_no = s41.processor_no  and quit_date is not null )
     ;
    Update_TakeTurn(v_app ,v_form_file_a, v_step_code ,v_process_no,v_reason);
- --   dbms_output.put_line('è®“èˆ‡,è‡ªå‹•è¼ªè¾¦:');
+ --   dbms_output.put_line('Åý»P,¦Û°Ê½ü¿ì:');
  
   END Check_Case4_1;
   
@@ -460,9 +471,9 @@ END Check_Case1_2;
       select max(spm56.form_file_a) form_file_a, spm56.appl_no  ,s31a.step_code
       from spm56 
       join spt31a s31a on spm56.appl_no = s31a.appl_no
-   --   join spt41 s41 on S41.Form_File_A = spm56.form_file_a 
-      where  substr(spm56.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜Žæ¡ˆ
-       and s31a.step_code in ('16','20')
+      where  substr(spm56.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
+       and s31a.step_code > '10'
+       and s31a.step_code < '20'  
        and s31a.appl_no not in ( select s.appl_no from spt41 s  join spm56 s56 on s.form_file_a = s56.form_file_a
                              where  s.appl_no = s31a.appl_no 
                              and s.issue_no > (select max(issue_no) from spt41 where s.appl_no = spt41.appl_no   and issue_type = '40007')
@@ -480,13 +491,13 @@ END Check_Case1_2;
       and trunc(sysdate) > case when valid_tw_date2(FILE_LIM_DATE)=1  then trunc(to_date('21991231','yyyyMMdd'))  else  trunc(to_date(to_char(to_number(substr(s41.FILE_LIM_DATE,1,3))+1911) || substr( s41.FILE_LIM_DATE,4,4),'yyyyMMdd')+20) end
        and exists (select 1 from spm63 where  processor_no = s41.processor_no  and quit_date is  null )
    ;
-    Update_DivideCode(v_app,v_form_file_a , v_step_code ,v_process_no,'è®“èˆ‡é€¾æœŸ');
-   --    dbms_output.put_line('è®“èˆ‡,é€¾æœŸ:');
+    Update_DivideCode(v_app,v_form_file_a , v_step_code ,v_process_no,'Åý»P¹O´Á');
+   --    dbms_output.put_line('Åý»P,¹O´Á:');
 
 
   END check_case4_2;
   ----------------------------
-  -- è®Šæ›´
+  -- ÅÜ§ó
   -----------------------------
 PROCEDURE Check_Case5_1
   --  
@@ -500,7 +511,7 @@ PROCEDURE Check_Case5_1
   ap_code := 'case5_1';
         
     
-     select s41.appl_no , s41.form_file_a,s56.step_code, s41.processor_no,'é›¢è·äººå“¡è®Šæ›´è¼ªè¾¦'
+     select s41.appl_no , s41.form_file_a,s56.step_code, s41.processor_no,'Â÷Â¾¤H­ûÅÜ§ó½ü¿ì'
             bulk collect
             into v_app,v_form_file_a, v_step_code ,v_process_no,v_reason
        from  spt41 s41
@@ -509,8 +520,9 @@ PROCEDURE Check_Case5_1
       select max(spm56.form_file_a) form_file_a, spm56.appl_no , s31a.type_no ,s31a.step_code
       from spm56 
       join spt31a s31a on spm56.appl_no = s31a.appl_no
-      where  substr(s31a.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜Žæ¡ˆ
-       and s31a.step_code in ('16','20')
+      where  substr(s31a.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
+       and s31a.step_code > '10'
+       and s31a.step_code < '20'
         group by spm56.appl_no  , s31a.type_no  ,s31a.step_code
        )  s56 on s41.form_file_a = s56.form_file_a and s41.appl_no = s56.appl_no
       where    s41.appl_no in 
@@ -518,7 +530,7 @@ PROCEDURE Check_Case5_1
       from  spt41 s41
       where      ( s41.file_d_flag is null or s41.file_d_flag = ' ')
        and s41.issue_type = '40009'
-       and  substr(s41.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜Žæ¡ˆ
+       and  substr(s41.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
        and (select count(1) from spt21 s21 where s21.appl_no = s41.appl_no and process_result is null) =0
        and not exists ( select 1 from spm56 where spm56.appl_no = s41.appl_no and spm56.form_id in ('C09','C09-1','C09-2','C09-3','C10','P03-1','A06','P32') )
        and (select count(1) from spt41  where spt41.appl_no = s41.appl_no and spt41.process_result is null) =0
@@ -527,7 +539,7 @@ PROCEDURE Check_Case5_1
       and exists (select 1 from spm63 where processor_no = s41.processor_no  and quit_date is not  null )
       ;
      Update_TakeTurn(v_app,v_form_file_a , v_step_code ,v_process_no,v_reason);
-   --    dbms_output.put_line('è®Šæ›´,è¼ªè¾¦:');
+   --    dbms_output.put_line('ÅÜ§ó,½ü¿ì:');
 
  
   END Check_Case5_1;
@@ -552,8 +564,9 @@ PROCEDURE Check_Case5_1
       select max(spm56.form_file_a) form_file_a, spm56.appl_no , s31a.type_no ,s31a.step_code
       from spm56 
       join spt31a s31a on spm56.appl_no = s31a.appl_no
-      where  substr(s31a.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜Žæ¡ˆ
-       and s31a.step_code in ('16','20')
+      where  substr(s31a.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
+       and s31a.step_code > '10'
+       and s31a.step_code < '20'
         group by spm56.appl_no  , s31a.type_no  ,s31a.step_code
        )  s56 on s41.form_file_a = s56.form_file_a and s41.appl_no = s56.appl_no
       where    s41.appl_no in 
@@ -561,7 +574,7 @@ PROCEDURE Check_Case5_1
       from  spt41 s41
       where     ( s41.file_d_flag is null or s41.file_d_flag = ' ')
        and s41.issue_type = '40009'
-       and  substr(s41.appl_no,4,1) = '1' -- åªæ¸…æŸ¥ç™¼æ˜Žæ¡ˆ
+       and  substr(s41.appl_no,4,1) = '1' -- ¥u²M¬dµo©ú®×
        and (select count(1) from spt21 s21 where s21.appl_no = s41.appl_no and process_result is null) =0
        and not exists ( select 1 from spm56 where spm56.appl_no = s41.appl_no and spm56.form_id in ('C09','C09-1','C09-2','C09-3','C10','P03-1','A06','P32') )
        and (select count(1) from spt41  where spt41.appl_no = s41.appl_no and spt41.process_result is null) =0
@@ -570,13 +583,13 @@ PROCEDURE Check_Case5_1
     --   and s41.appl_no in ('100102735','101116862','101116442')    -- for test
        and exists (select 1 from spm63 where processor_no = s41.processor_no  and quit_date is  null )
       ;
-     Update_DivideCode(v_app ,v_form_file_a , v_step_code ,v_process_no,'è®Šæ›´é€¾æœŸ');
-    --   dbms_output.put_line('è®Šæ›´,é€¾æœŸ:');
+     Update_DivideCode(v_app ,v_form_file_a , v_step_code ,v_process_no,'ÅÜ§ó¹O´Á');
+    --   dbms_output.put_line('ÅÜ§ó,¹O´Á:');
 
  
   END Check_Case5_2;
 ----------------------------
--- å»¶é•·
+-- ©µªø
 -----------------------------
 PROCEDURE Check_Case6_1
   --  
@@ -589,9 +602,9 @@ is
 BEGIN
    ap_code := 'case6_1';
          
-     -- è‡ªå‹•è¼ªè¾¦
+     -- ¦Û°Ê½ü¿ì
     
-      select s21.appl_no,null,spt31a.step_code, s21.processor_no,'é›¢è·äººå“¡å»¶é•·å°ˆåˆ©æ¬Šè¼ªè¾¦'
+      select s21.appl_no,null,spt31a.step_code, s21.processor_no,'Â÷Â¾¤H­û©µªø±M§QÅv½ü¿ì'
        bulk collect
       into v_app,v_form_file_a , v_step_code ,v_process_no,v_reason
        from spt41 s41
@@ -612,7 +625,7 @@ BEGIN
       )  
       ;
      Update_TakeTurn(v_app ,v_form_file_a, v_step_code ,v_process_no,v_reason);
-   --  dbms_output.put_line('å»¶é•·,è‡ªå‹•è¼ªè¾¦');
+   --  dbms_output.put_line('©µªø,¦Û°Ê½ü¿ì');
  
   END Check_Case6_1;
   
@@ -647,8 +660,8 @@ BEGIN
       group by spm56.appl_no 
       ) 
       ;
-       Update_DivideCode(v_app ,v_form_file_a, v_step_code ,v_process_no,'å»¶é•·é€¾æœŸ');
-   --   dbms_output.put_line('å»¶é•·,é€¾æœŸ');
+       Update_DivideCode(v_app ,v_form_file_a, v_step_code ,v_process_no,'©µªø¹O´Á');
+   --   dbms_output.put_line('©µªø,¹O´Á');
  
   END Check_Case6_2;
   
@@ -663,7 +676,7 @@ BEGIN
     l_idx number;
     l_processor_no skill.processor_no%type;
   BEGIN
-  
+  ap_code := 'Assign_AutoTurn';
     select trim(processor_no) 
     bulk collect
     into v_process_no
@@ -690,14 +703,19 @@ BEGIN
              END IF;
      end if;
      
-   
+ --  SYS.Dbms_Output.Put_Line('l_processor_no='||l_processor_no);
      OPEN d_curosr;
      LOOP
      FETCH d_curosr
       INTO l_appl_no;
      EXIT WHEN d_curosr%NOTFOUND;
+           
         l_idx := l_idx +1;
-      --  SYS.Dbms_Output.Put_Line(v_process_no(l_idx) || ':' || l_appl_no);
+        
+         IF l_idx > v_process_no.count THEN
+           l_idx := 1;
+         END IF;
+        SYS.Dbms_Output.Put_Line(v_process_no(l_idx) || ':' || l_appl_no);
          update appl set processor_no = v_process_no(l_idx),
                          assign_date = to_char(to_number(to_char(sysdate,'yyyyMMdd')-19110000))
          where appl_no = l_appl_no;
@@ -706,9 +724,7 @@ BEGIN
       --    UPDATE SPT31   SET SCH_PROCESSOR_NO =  v_process_no(l_idx)    WHERE APPL_NO = l_appl_no;
        --   Dbms_Output.Put_Line(SQL%RowCount|| ': update SPT31 processor_no : ' ||  v_process_no(l_idx) || '; l_appl_no:' ||l_appl_no);
      
-       IF l_idx = v_process_no.count THEN
-           l_idx := 0;
-       END IF;
+     
      END LOOP;
     
      CLOSE d_curosr;
@@ -725,9 +741,9 @@ BEGIN
    commit;
  
    check_case1_1;
-   -- dbms_output.put_line(' check_case1_1 Finish!!');
+  --  dbms_output.put_line(' check_case1_1 Finish!!');
    check_case1_2;
-   -- dbms_output.put_line(' check_case1_2 Finish!!');   
+  --  dbms_output.put_line(' check_case1_2 Finish!!');   
    check_case2_1;
    --dbms_output.put_line(' check_case2_1 Finish!!');
    check_case2_2;    
@@ -758,5 +774,8 @@ EXCEPTION
   WHEN OTHERS THEN
    ecode := SQLCODE;
    p_msg := ap_code || ':' || SQLCODE || ':' || SQLERRM; 
-   -- dbms_output.put_line('Error Code:' || ecode || '; Error Message:' || p_msg);
+  -- dbms_output.put_line('Error Code:' || ecode || '; Error Message:' || p_msg);
+     raise_application_error(-20001,to_char(sysdate,'yyyyMMdd  hh24:mm:SS') || '  :' || 'Procedure CHECK_OVERTIME[' || ap_code || '] error was encountered - '||SQLCODE||' -ERROR- '||  substr(SQLERRM,1,500));
 END CHECK_OVERTIME;
+
+/
